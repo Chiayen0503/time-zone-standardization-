@@ -1,0 +1,115 @@
+---
+title: "Lab4 assessment"
+author: '32404170'
+date: "10/28/2018"
+output: pdf_document
+---
+
+```{r}
+ASS_1975_2015<-read.csv("Australia_severe_storms_1975-2015.csv")
+dim(ASS_1975_2015)
+```
+
+```{r}
+library(dplyr)
+clean <- select(ASS_1975_2015, Event.ID, Database, ID, Date.Time, Nearest.town, State, Latitude, Longitude)
+clean2 <- filter(clean, Database != "Waterspout")
+head(clean2, n=1)
+dim(clean2)
+
+```
+
+```{r}
+library(dplyr)
+library(lubridate)
+
+clean2$Date.Time<-as.character(clean2$Date.Time)
+clean2$State<-as.character(clean2$State)
+clean2 <-mutate(clean2, Time_Zone = "")
+
+for (i in 1:length(clean2$State)){
+  if (clean2$State[i] == "QLD"){
+    clean2$Time_Zone[i] <- "Australia/Queensland"}
+  if (clean2$State[i] == "NSW"& clean2$Nearest.town[i] != "Broken Hill"){
+    clean2$Time_Zone[i] <- "Australia/NSW"}
+  if (clean2$State[i] == "NSW" & clean2$Nearest.town[i] == "Broken Hill"){
+    clean2$Time_Zone[i] <- "Australia/Broken_Hill"}
+  if (clean2$State[i] == "VIC"){
+    clean2$Time_Zone[i] <- "Australia/Victoria"}
+  if (clean2$State[i] == "SA"){
+    clean2$Time_Zone[i] <- "Australia/South"}
+  if (clean2$State[i] == "WA"){
+    clean2$Time_Zone[i] <- "Australia/West"}
+  if (clean2$State[i] == "TAS"){
+    clean2$Time_Zone[i] <- "Australia/Tasmania"}
+  if (clean2$State[i] == "NT"){
+    clean2$Time_Zone[i] <- "Australia/North"}
+  if (clean2$State[i] == "ACT"){
+    clean2$Time_Zone[i] <- "Australia/ACT"}
+  }  
+
+```
+
+
+```{r}
+dmyhms<-c()
+dmyhms <-dmy_hm(clean2$Date.Time)
+
+clean2<-mutate(clean2, UTCtime_zone="")
+
+k<- c()
+G<- c()
+
+for (i in 1:length(clean2$Date.Time)){
+  k <- force_tz(dmyhms, tz = clean2$Time_Zone[i])
+  G <- with_tz(k, tz="UTC")}
+
+
+clean2$UTCtime_zone<-G
+head(clean2, n=1)
+
+
+```
+
+
+```{r}
+
+clean2<-mutate(clean2, Month="", Year="")
+for (i in 1:length(clean2$Date.Time)){
+  clean2$Month[i] <- month(clean2$UTCtime_zone[i])
+  clean2$Year[i] <- year(clean2$UTCtime_zone[i])}
+head(clean2, n=1)
+```
+
+
+```{r}
+
+year<-year(clean2$UTCtime_zone)
+date<-date(clean2$UTCtime_zone)
+month<-month(clean2$UTCtime_zone)
+event<-clean2$Database 
+
+record<- data.frame(year,month, date,event)
+
+
+base_on_year <- with(record, table(year, event))
+base_on_month<-with(record, table(month, event))
+
+new_data_frame<-as.data.frame.matrix(base_on_year) 
+drops <- c("Waterspout")
+new_data_frame<-new_data_frame[ , !(names(new_data_frame) %in% drops)]
+
+
+
+plot_data <- as.data.frame.matrix(base_on_month)
+drops <- c("Waterspout")
+plot_data<-plot_data[ , !(names(plot_data) %in% drops)]
+
+
+year.group =rownames(plot_data)
+n.group=nrow(plot_data)
+
+k<-barplot(as.matrix(plot_data), beside=T, ylim=c(0,1000), ylab="frequency")
+k
+
+```
